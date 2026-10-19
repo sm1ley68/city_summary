@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import tempfile
 import time
 from pathlib import Path
@@ -16,7 +17,10 @@ logger = logging.getLogger(__name__)
 
 RATE_URL = "https://api.frankfurter.dev/v2/rate/{currency}/RUB"
 CACHE_TTL_SECONDS = 5 * 60
-CACHE_FILE = Path(tempfile.gettempdir()) / "city_summary_rates.json"
+CACHE_DIR = (
+    Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "city_summary"
+)
+CACHE_FILE = CACHE_DIR / "rates.json"
 
 # Frankfurter отвечает 422 на неизвестный код валюты.
 NOT_FOUND_STATUSES = frozenset({404, 422})
@@ -70,7 +74,7 @@ def _read_cache(code: str) -> float | None:
     rate, saved_at = entry.get("rate"), entry.get("saved_at")
     if not isinstance(rate, int | float) or not isinstance(saved_at, int | float):
         return None
-    if time.time() - saved_at > CACHE_TTL_SECONDS:
+    if rate <= 0 or not 0 <= time.time() - saved_at <= CACHE_TTL_SECONDS:
         return None
     return float(rate)
 
@@ -79,6 +83,11 @@ def _write_cache(code: str, rate: float) -> None:
     cache = _load_cache()
     cache[code] = {"rate": rate, "saved_at": time.time()}
     try:
-        CACHE_FILE.write_text(json.dumps(cache), encoding="utf-8")
+        CACHE_FILE.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        # Пишем во временный файл и атомарно подменяем, чтобы не оставить битый кэш.
+        fd, tmp_path = tempfile.mkstemp(dir=CACHE_FILE.parent, suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp_file:
+            json.dump(cache, tmp_file)
+        os.replace(tmp_path, CACHE_FILE)
     except OSError:
         logger.warning("Не удалось сохранить кэш курса в %s", CACHE_FILE)
