@@ -5,12 +5,6 @@ from typing import Any
 
 import requests
 
-from clients.exceptions import (
-    InvalidResponseError,
-    ServiceUnavailableError,
-    UpstreamHTTPError,
-)
-
 logger = logging.getLogger(__name__)
 
 TIMEOUT_SECONDS = 5
@@ -19,6 +13,47 @@ BACKOFF_SECONDS = 0.5
 MAX_RETRY_AFTER_SECONDS = 10
 RETRYABLE_STATUSES = frozenset({500, 502, 503, 504})
 TOO_MANY_REQUESTS = 429
+
+
+class AppError(Exception):
+    """Базовая ошибка приложения."""
+
+
+class NotFoundError(AppError):
+    """Запрошенная сущность не найдена во внешнем сервисе."""
+
+
+class CityNotFoundError(NotFoundError):
+    def __init__(self, city: str) -> None:
+        super().__init__(f"Город не найден: {city}")
+        self.city = city
+
+
+class CurrencyNotFoundError(NotFoundError):
+    def __init__(self, currency: str) -> None:
+        super().__init__(f"Код валюты не найден: {currency}")
+        self.currency = currency
+
+
+class ExternalServiceError(AppError):
+    """Внешний сервис не смог корректно ответить."""
+
+
+class ServiceUnavailableError(ExternalServiceError):
+    """Сервис недоступен после всех повторов."""
+
+
+class UpstreamHTTPError(ExternalServiceError):
+    """Сервис вернул статус ошибки, который не имеет смысла повторять (4xx)."""
+
+    def __init__(self, url: str, status_code: int) -> None:
+        super().__init__(f"{url}: HTTP {status_code}")
+        self.url = url
+        self.status_code = status_code
+
+
+class InvalidResponseError(ExternalServiceError):
+    """Ответ сервиса не соответствует ожидаемому формату."""
 
 
 def get_json(url: str, params: dict[str, Any] | None = None) -> Any:

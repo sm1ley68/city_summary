@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from clients import rates
-from clients.exceptions import (
+from clients.http import (
     CityNotFoundError,
     CurrencyNotFoundError,
     InvalidResponseError,

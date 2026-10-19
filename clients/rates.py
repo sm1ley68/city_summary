@@ -6,12 +6,12 @@ import time
 from pathlib import Path
 from urllib.parse import quote
 
-from clients.exceptions import (
+from clients.http import (
     CurrencyNotFoundError,
     InvalidResponseError,
     UpstreamHTTPError,
+    get_json,
 )
-from clients.http import get_json
 
 logger = logging.getLogger(__name__)
 

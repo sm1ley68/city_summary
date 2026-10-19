@@ -10,7 +10,7 @@ CLI-утилита «Сводка по городу»: получает теку
 ## Требования
 
 - Python 3.12
-- Зависимости из `requirements.txt` (`requests`, `ruff`)
+- Зависимости из `requirements.txt` (`requests`)
 
 ## Установка
 
@@ -26,7 +26,6 @@ pip install -r requirements.txt
 python main.py --city Moscow                  # курс USD→RUB (по умолчанию)
 python main.py --city Moscow --currency EUR   # курс EUR→RUB
 python main.py --city Moscow --json           # сводка в JSON
-python main.py --city Moscow -v               # подробные логи с run_id в stderr
 ```
 
 Пример вывода:
@@ -54,14 +53,16 @@ USD→RUB: 92.15
 city_summary/
 ├── main.py                 # CLI: argparse, логирование с run_id, вывод, коды выхода
 ├── clients/                # только общение с внешними API
-│   ├── exceptions.py       # исключения приложения
-│   ├── http.py             # общий GET: timeout 5 с, 2 повтора, Retry-After для 429
+│   ├── http.py             # общий GET: timeout 5 с, 2 повтора, Retry-After для 429; исключения
 │   ├── weather.py          # get_weather(city) → dict
 │   └── rates.py            # get_rate(currency) → float, кэш курса на 5 минут
 ├── processing/
 │   ├── preprocessing.py    # правила: warm_clothes, expensive, пустое описание погоды
 │   └── service.py          # build_city_summary(city, currency="USD") → dict
 └── tests/                  # unittest + unittest.mock, без сетевых запросов
+    ├── test_preprocessing.py
+    ├── test_http.py
+    └── test_clients.py
 ```
 
 ## Правила предобработки
@@ -79,16 +80,14 @@ city_summary/
 
 ## Дополнительно
 
-- логирование с `run_id` (флаг `-v`);
+- логирование с `run_id` (логи пишутся в stderr, сводка — в stdout);
 - кэш курса на 5 минут (`~/.cache/city_summary/rates.json`);
 - флаг `--json`;
 - аннотации типов;
 - тесты клиентов через `unittest.mock`.
 
-## Проверки
+## Тесты
 
 ```bash
 python -m unittest discover -s tests -t .
-ruff check .
-ruff format .
 ```

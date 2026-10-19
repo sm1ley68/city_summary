@@ -3,8 +3,14 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from clients.exceptions import ServiceUnavailableError, UpstreamHTTPError
-from clients.http import MAX_RETRIES, TIMEOUT_SECONDS, get_json, parse_retry_after
+from clients.http import (
+    MAX_RETRIES,
+    TIMEOUT_SECONDS,
+    ServiceUnavailableError,
+    UpstreamHTTPError,
+    get_json,
+    parse_retry_after,
+)
 
 
 def make_response(status: int, payload: object = None, headers: dict | None = None):

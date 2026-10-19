@@ -5,7 +5,7 @@ import sys
 import uuid
 from typing import Any
 
-from clients.exceptions import ExternalServiceError, NotFoundError
+from clients.http import ExternalServiceError, NotFoundError
 from processing.service import build_city_summary
 
 EXIT_OK = 0
@@ -27,9 +27,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--currency", default="USD", help="ISO-код валюты (по умолчанию USD)"
     )
     parser.add_argument("--json", action="store_true", help="вывести сводку в JSON")
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="подробные логи в stderr"
-    )
     args = parser.parse_args(argv)
     if not args.city.strip():
         parser.error("--city не может быть пустым")
@@ -38,7 +35,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def setup_logging(verbose: bool) -> str:
+def setup_logging() -> str:
     run_id = uuid.uuid4().hex[:8]
     old_factory = logging.getLogRecordFactory()
 
@@ -49,7 +46,7 @@ def setup_logging(verbose: bool) -> str:
 
     logging.setLogRecordFactory(record_factory)
     logging.basicConfig(
-        level=logging.INFO if verbose else logging.WARNING,
+        level=logging.INFO,
         format="%(asctime)s %(levelname)s [run_id=%(run_id)s] %(name)s: %(message)s",
         stream=sys.stderr,
     )
@@ -71,7 +68,7 @@ def format_summary(summary: dict[str, Any]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    run_id = setup_logging(args.verbose)
+    run_id = setup_logging()
     logger.info(
         "Запуск run_id=%s city=%s currency=%s", run_id, args.city, args.currency
     )

@@ -1,8 +1,7 @@
 import logging
 from typing import Any
 
-from clients.exceptions import CityNotFoundError, InvalidResponseError
-from clients.http import get_json
+from clients.http import CityNotFoundError, InvalidResponseError, get_json
 
 logger = logging.getLogger(__name__)
 
