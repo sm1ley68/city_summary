@@ -5,6 +5,7 @@ import requests
 
 from clients.http import (
     MAX_RETRIES,
+    MAX_RETRY_AFTER_SECONDS,
     TIMEOUT_SECONDS,
     ServiceUnavailableError,
     UpstreamHTTPError,
@@ -60,6 +61,31 @@ class GetJsonTest(unittest.TestCase):
         ]
         get_json("https://example.com")
         mock_sleep.assert_called_once_with(3.0)
+
+    def test_429_waits_long_retry_after_within_limit(self, mock_get, mock_sleep) -> None:
+        mock_get.side_effect = [
+            make_response(429, headers={"Retry-After": "30"}),
+            make_response(200, {"ok": True}),
+        ]
+        self.assertEqual(get_json("https://example.com"), {"ok": True})
+        mock_sleep.assert_called_once_with(30.0)
+        self.assertEqual(mock_get.call_count, 2)
+
+    def test_429_retry_after_above_limit_fails_fast(self, mock_get, mock_sleep) -> None:
+        retry_after = str(MAX_RETRY_AFTER_SECONDS + 1)
+        mock_get.return_value = make_response(429, headers={"Retry-After": retry_after})
+        with self.assertRaises(ServiceUnavailableError):
+            get_json("https://example.com")
+        self.assertEqual(mock_get.call_count, 1)
+        mock_sleep.assert_not_called()
+
+    def test_429_without_retry_after_uses_backoff(self, mock_get, mock_sleep) -> None:
+        mock_get.side_effect = [
+            make_response(429),
+            make_response(200, {"ok": True}),
+        ]
+        get_json("https://example.com")
+        mock_sleep.assert_called_once_with(0.5)
 
     def test_4xx_is_not_retried(self, mock_get, mock_sleep) -> None:
         mock_get.return_value = make_response(422)
